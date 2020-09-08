@@ -4,20 +4,20 @@ use ggez::graphics;
 use ggez::graphics::{DrawParam, Image};
 use ggez::nalgebra as na;
 use ggez::{conf, event, Context, GameResult};
-use legion::prelude::*;
+use legion::*;
 use std::iter;
 use std::path;
 
 mod systems;
-use systems::build_move_system;
+use systems::*;
 mod level;
 
 // Components
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Position {
-    x: u8,
-    y: u8,
-    z: u8,
+    x: i32,
+    y: i32,
+    z: i32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -49,7 +49,6 @@ pub struct InputQueue {
 }
 
 pub struct Game {
-    pub universe: Universe,
     pub world: World,
     pub resources: Resources,
     pub scheduler: Schedule,
@@ -57,20 +56,18 @@ pub struct Game {
 
 impl Game {
     fn new() -> Game {
-        let universe = Universe::new();
-        let world = universe.create_world();
+        let mut world = World::default();
         let mut resources = Resources::default();
         resources.insert(InputQueue {
             keys_pressed: Vec::new(),
         });
 
         let scheduler = Schedule::builder()
-            .add_system(build_move_system())
+            .add_system(player_move_system())
             .flush()
             .build();
 
         Game {
-            universe,
             world,
             resources,
             scheduler,
@@ -78,70 +75,55 @@ impl Game {
     }
 
     pub fn create_wall(&mut self, position: Position) {
-        self.world.insert(
-            (),
-            iter::once((
+        self.world.push((
                 Renderable {
                     path: "/wall.png".to_string(),
                 },
                 Position { z: 10, ..position },
                 Wall {},
                 Immovable {},
-            )),
-        );
+            ));
     }
 
     pub fn create_floor(&mut self, position: Position) {
-        self.world.insert(
-            (),
-            iter::once((
+        self.world.push((
                 Renderable {
                     path: "/floor.png".to_string(),
                 },
                 Position { z: 5, ..position },
-            )),
-        );
+            ));
     }
 
     pub fn create_box(&mut self, position: Position) {
-        self.world.insert(
-            (),
-            iter::once((
+        self.world.push((
                 Renderable {
                     path: "/box.png".to_string(),
                 },
                 Position { z: 10, ..position },
                 Boxes {},
                 Movable {},
-            )),
-        );
+            ));
     }
 
     pub fn create_box_spot(&mut self, position: Position) {
-        self.world.insert(
-            (),
-            iter::once((
+        self.world.push((
                 Renderable {
                     path: "/box_spot.png".to_string(),
                 },
                 Position { z: 9, ..position },
                 BoxSpot {},
-            )),
-        );
+            ));
     }
 
     pub fn create_player(&mut self, position: Position) {
-        self.world.insert(
-            (),
-            iter::once((
+        self.world.push((
                 Player {},
                 Renderable {
                     path: "/player.png".to_string(),
                 },
                 Position { z: 10, ..position },
                 Movable {},
-            )),
-        );
+            ));
     }
 }
 
@@ -155,8 +137,8 @@ impl event::EventHandler for Game {
     fn draw(&mut self, context: &mut Context) -> GameResult {
         graphics::clear(context, graphics::Color::new(0.95, 0.95, 0.95, 1.0));
 
-        let query = <(Read<Renderable>, Read<Position>)>::query();
-        for (renderable, pos) in query.iter(&mut self.world) {
+        let mut query = <(&Renderable, &mut Position)>::query();
+        for (renderable, pos) in query.iter_mut(&mut self.world) {
             let image = Image::new(context, renderable.path.clone()).expect("expected path...");
             let x = pos.x as f32 * 32.0;
             let y = pos.y as f32 * 32.0;
