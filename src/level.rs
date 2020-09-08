@@ -24,8 +24,8 @@ pub fn load_level(game: &mut Game, map_string: String) {
 
         for (x, column) in columns.iter().enumerate() {
             let position = Position {
-                x: x as u8,
-                y: y as u8,
+                x: x as i32,
+                y: y as i32,
                 z: 0,
             };
 
