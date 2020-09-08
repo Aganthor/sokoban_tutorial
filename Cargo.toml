@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 ggez = "0.5.1"
-legion = "0.2.4"
+legion = "0.3.0"
